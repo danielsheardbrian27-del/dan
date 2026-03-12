@@ -1,0 +1,111 @@
+-- ================================================
+-- Roblox Aimbot + ESP + FOV Circle + Adjustable FOV GUI
+-- Educational/private testing use only – high ban risk in public games
+-- ================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- =============== CONFIG ===============
+local AIMBOT_KEY = Enum.KeyCode.Q
+local ESP_ENABLED_BY_DEFAULT = false
+local AIMBOT_ENABLED_BY_DEFAULT = false
+local AIMBOT_SMOOTHNESS = 0.3
+local ESP_COLOR = Color3.fromRGB(255, 0, 0)
+local FOV_RADIUS = 150          -- starting value
+local FOV_COLOR = Color3.fromRGB(255, 255, 255)
+local FOV_THICKNESS = 2
+local FOV_VISIBLE = true
+local ONLY_VISIBLE_ESP = true   -- true = ESP only shows visible players (raycast check)
+-- ======================================
+
+local aimbotEnabled = AIMBOT_ENABLED_BY_DEFAULT
+local espEnabled = ESP_ENABLED_BY_DEFAULT
+
+-- =============== FOV CIRCLE ===============
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = FOV_THICKNESS
+fovCircle.Color = FOV_COLOR
+fovCircle.Radius = FOV_RADIUS
+fovCircle.Filled = false
+fovCircle.Transparency = 0.8
+fovCircle.Visible = FOV_VISIBLE
+fovCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+-- =============== GUI ===============
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CheatMenuFOV"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 250, 0, 220)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -110)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+Title.Text = "Aimbot + ESP + FOV"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
+Title.Parent = MainFrame
+
+local AimbotBtn = Instance.new("TextButton")
+AimbotBtn.Size = UDim2.new(0.9, 0, 0, 35)
+AimbotBtn.Position = UDim2.new(0.05, 0, 0, 40)
+AimbotBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimbotBtn.Text = "Aimbot: OFF"
+AimbotBtn.TextColor3 = Color3.new(1,1,1)
+AimbotBtn.Font = Enum.Font.SourceSansBold
+AimbotBtn.TextSize = 16
+AimbotBtn.Parent = MainFrame
+
+local ESPBtn = Instance.new("TextButton")
+ESPBtn.Size = UDim2.new(0.9, 0, 0, 35)
+ESPBtn.Position = UDim2.new(0.05, 0, 0, 85)
+ESPBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ESPBtn.Text = "ESP: OFF"
+ESPBtn.TextColor3 = Color3.new(1,1,1)
+ESPBtn.Font = Enum.Font.SourceSansBold
+ESPBtn.TextSize = 16
+ESPBtn.Parent = MainFrame
+
+local FOVLabel = Instance.new("TextLabel")
+FOVLabel.Size = UDim2.new(0.9, 0, 0, 30)
+FOVLabel.Position = UDim2.new(0.05, 0, 0, 130)
+FOVLabel.BackgroundTransparency = 1
+FOVLabel.Text = "FOV Radius: " .. FOV_RADIUS
+FOVLabel.TextColor3 = Color3.new(1,1,1)
+FOVLabel.Font = Enum.Font.SourceSansBold
+FOVLabel.TextSize = 16
+FOVLabel.Parent = MainFrame
+
+local FOVMinus = Instance.new("TextButton")
+FOVMinus.Size = UDim2.new(0.4, 0, 0, 30)
+FOVMinus.Position = UDim2.new(0.05, 0, 0, 165)
+FOVMinus.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+FOVMinus.Text = "- Smaller"
+FOVMinus.TextColor3 = Color3.new(1,1,1)
+FOVMinus.Font = Enum.Font.SourceSansBold
+FOVMinus.TextSize = 16
+FOVMinus.Parent = MainFrame
+
+local FOVPlus = Instance.new("TextButton")
+FOVPlus.Size = UDim2.new(0.4, 0, 0, 30)
+FOVPlus.Position = UDim2.new(0.55, 0, 0, 165)
+FOVPlus.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+FOVPlus.Text = "+ Bigger"
+FOVPlus.TextColor3 = Color3.new(1,1,1)
+FOVPlus.Font = Enum.Font.SourceSansBold
+FOVPlus.TextSize = 16
+FOVPlus.Parent = MainFrame
+
