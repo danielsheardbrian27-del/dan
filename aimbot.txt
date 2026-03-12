@@ -1,0 +1,200 @@
+-- ================================================
+-- Roblox Aimbot + ESP + Simple GUI
+-- Made for educational purposes / private testing only
+-- RUN WITH A ROBLOX EXECUTOR (Krnl, Fluxus, Solara, etc.)
+-- Using this in public games will likely get you banned.
+-- Works as of 2026 (client-side camera aimbot + Drawing ESP)
+-- ================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- =============== CONFIG ===============
+local AIMBOT_KEY = Enum.KeyCode.Q          -- Press Q to toggle aimbot (or use GUI)
+local ESP_ENABLED_BY_DEFAULT = false
+local AIMBOT_ENABLED_BY_DEFAULT = false
+local AIMBOT_SMOOTHNESS = 0.3              -- 0 = instant snap, 1 = very smooth (tweak this)
+local ESP_COLOR = Color3.fromRGB(255, 0, 0) -- Red boxes
+local ONLY_SHOW_HEALTHY = false            -- Optional: hide dead players
+-- ======================================
+
+-- Variables
+local aimbotEnabled = AIMBOT_ENABLED_BY_DEFAULT
+local espEnabled = ESP_ENABLED_BY_DEFAULT
+
+-- =============== GUI ===============
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SimpleCheatMenu"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Position = UDim2.new(0.5, -110, 0.5, -90)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+Title.Text = "Aimbot + ESP Menu"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
+Title.Parent = MainFrame
+
+local AimbotBtn = Instance.new("TextButton")
+AimbotBtn.Size = UDim2.new(0.9, 0, 0, 35)
+AimbotBtn.Position = UDim2.new(0.05, 0, 0, 40)
+AimbotBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimbotBtn.Text = "Aimbot: OFF"
+AimbotBtn.TextColor3 = Color3.new(1,1,1)
+AimbotBtn.Font = Enum.Font.SourceSansBold
+AimbotBtn.TextSize = 16
+AimbotBtn.Parent = MainFrame
+
+local ESPBtn = Instance.new("TextButton")
+ESPBtn.Size = UDim2.new(0.9, 0, 0, 35)
+ESPBtn.Position = UDim2.new(0.05, 0, 0, 85)
+ESPBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ESPBtn.Text = "ESP: OFF"
+ESPBtn.TextColor3 = Color3.new(1,1,1)
+ESPBtn.Font = Enum.Font.SourceSansBold
+ESPBtn.TextSize = 16
+ESPBtn.Parent = MainFrame
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0.9, 0, 0, 30)
+CloseBtn.Position = UDim2.new(0.05, 0, 0, 130)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseBtn.Text = "Close Menu"
+CloseBtn.TextColor3 = Color3.new(1,1,1)
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.TextSize = 16
+CloseBtn.Parent = MainFrame
+
+-- Button logic
+AimbotBtn.MouseButton1Click:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    AimbotBtn.Text = "Aimbot: " .. (aimbotEnabled and "ON" or "OFF")
+    AimbotBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+end)
+
+ESPBtn.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    ESPBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+    ESPBtn.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- =============== ESP SETUP ===============
+local ESPDrawings = {} -- player → box
+
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+    
+    local box = Drawing.new("Square")
+    box.Thickness = 2
+    box.Color = ESP_COLOR
+    box.Filled = false
+    box.Transparency = 0.8
+    box.Visible = false
+    
+    ESPDrawings[player] = box
+end
+
+local function RemoveESP(player)
+    if ESPDrawings[player] then
+        ESPDrawings[player]:Remove()
+        ESPDrawings[player] = nil
+    end
+end
+
+-- Create for existing players
+for _, plr in ipairs(Players:GetPlayers()) do
+    CreateESP(plr)
+end
+
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(RemoveESP)
+
+-- =============== AIMBOT HELPERS ===============
+local function GetClosestPlayer()
+    local closest = nil
+    local shortestDist = math.huge
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local head = player.Character.Head
+            local dist = (head.Position - Camera.CFrame.Position).Magnitude
+            
+            -- Optional: skip dead players
+            if ONLY_SHOW_HEALTHY and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health <= 0 then
+                continue
+            end
+            
+            if dist < shortestDist then
+                shortestDist = dist
+                closest = player
+            end
+        end
+    end
+    return closest
+end
+
+-- =============== MAIN LOOP ===============
+RunService.RenderStepped:Connect(function()
+    -- === AIMBOT ===
+    if aimbotEnabled then
+        local target = GetClosestPlayer()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            local targetPos = target.Character.Head.Position
+            local currentCFrame = Camera.CFrame
+            local targetCFrame = CFrame.lookAt(currentCFrame.Position, targetPos)
+            
+            -- Smooth interpolation
+            Camera.CFrame = currentCFrame:Lerp(targetCFrame, AIMBOT_SMOOTHNESS)
+        end
+    end
+    
+    -- === ESP UPDATE ===
+    for player, box in pairs(ESPDrawings) do
+        if espEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local root = player.Character.HumanoidRootPart
+            local vector, onScreen = Camera:WorldToViewportPoint(root.Position)
+            
+            if onScreen then
+                local distance = (root.Position - Camera.CFrame.Position).Magnitude
+                local scale = 3000 / distance  -- tweak if boxes are too big/small
+                
+                box.Size = Vector2.new(80 * scale, 160 * scale)
+                box.Position = Vector2.new(vector.X - box.Size.X / 2, vector.Y - box.Size.Y / 2)
+                box.Visible = true
+            else
+                box.Visible = false
+            end
+        else
+            if box then box.Visible = false end
+        end
+    end
+end)
+
+-- =============== EXTRA: Q key toggle (backup) ===============
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == AIMBOT_KEY then
+        aimbotEnabled = not aimbotEnabled
+        AimbotBtn.Text = "Aimbot: " .. (aimbotEnabled and "ON" or "OFF")
+        AimbotBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+    end
+end)
+
+print("✅ Aimbot + ESP + GUI loaded! Click the menu or press Q to toggle aimbot.")
