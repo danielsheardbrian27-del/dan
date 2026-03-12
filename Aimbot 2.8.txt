@@ -1,5 +1,3 @@
-Aimbot 2.8
-
 -- ================================================
 -- Aimbot 2.8
 -- Enemies ONLY aimbot (FOV limited + Infinite Distance)
