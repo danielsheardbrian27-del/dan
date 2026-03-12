@@ -1,0 +1,177 @@
+-- Infinite Money GUI (2025–2026 common paste)
+-- Put this in an executor (Synapse X, Script-Ware, etc.)
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local gui = player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "InfMoneyGUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = gui
+
+-- Main Frame
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 280, 0, 220)
+Frame.Position = UDim2.new(0.5, -140, 0.5, -110)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+-- Title bar
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+Title.Text = "Infinite Money GUI"
+Title.TextColor3 = Color3.fromRGB(220, 220, 255)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 22
+Title.Parent = Frame
+
+-- Close button
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+CloseBtn.Text = "X"
+CloseBtn.TextColor3 = Color3.new(1,1,1)
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.TextSize = 20
+CloseBtn.Parent = Frame
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+-- Money label
+local MoneyLabel = Instance.new("TextLabel")
+MoneyLabel.Size = UDim2.new(1, -20, 0, 40)
+MoneyLabel.Position = UDim2.new(0, 10, 0, 50)
+MoneyLabel.BackgroundTransparency = 1
+MoneyLabel.Text = "Target: —"
+MoneyLabel.TextColor3 = Color3.fromRGB(180, 255, 180)
+MoneyLabel.Font = Enum.Font.SourceSansSemibold
+MoneyLabel.TextSize = 18
+MoneyLabel.TextXAlignment = Enum.TextXAlignment.Left
+MoneyLabel.Parent = Frame
+
+-- Find cash stat
+local leaderstats = player:WaitForChild("leaderstats", 8)
+local cash = nil
+
+if leaderstats then
+    cash = leaderstats:FindFirstChild("Cash") 
+        or leaderstats:FindFirstChild("Money") 
+        or leaderstats:FindFirstChild("Coins") 
+        or leaderstats:FindFirstChildWhichIsA("IntValue") 
+        or leaderstats:FindFirstChildWhichIsA("NumberValue")
+end
+
+if cash then
+    MoneyLabel.Text = "Target: " .. cash.Name
+else
+    MoneyLabel.Text = "No money stat found"
+    MoneyLabel.TextColor3 = Color3.fromRGB(255, 140, 140)
+end
+
+-- Input box
+local AmountBox = Instance.new("TextBox")
+AmountBox.Size = UDim2.new(1, -20, 0, 36)
+AmountBox.Position = UDim2.new(0, 10, 0, 100)
+AmountBox.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
+AmountBox.TextColor3 = Color3.fromRGB(220, 220, 255)
+AmountBox.PlaceholderText = "Amount (e.g. 1e12 or 999999999999)"
+AmountBox.Text = "1000000000000"
+AmountBox.Font = Enum.Font.SourceSans
+AmountBox.TextSize = 18
+AmountBox.ClearTextOnFocus = false
+AmountBox.Parent = Frame
+
+-- Buttons
+local function createButton(text, yOffset, color, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0.45, 0, 0, 44)
+    btn.Position = UDim2.new(0.025 + (btn.Size.X.Offset > 0 and 0.5 or 0), 10, 0, yOffset)
+    btn.BackgroundColor3 = color
+    btn.Text = text
+    btn.TextColor3 = Color3.new(1,1,1)
+    btn.Font = Enum.Font.SourceSansSemibold
+    btn.TextSize = 20
+    btn.Parent = Frame
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- Set button
+createButton("SET", 150, Color3.fromRGB(60, 160, 80), function()
+    if not cash then return end
+    local input = AmountBox.Text:lower()
+    local num
+    
+    if input:find("e") then
+        local base, exp = input:match("([%d%.]+)e(%d+)")
+        if base and exp then
+            num = tonumber(base) * 10^tonumber(exp)
+        end
+    else
+        num = tonumber(input:gsub(",", ""))
+    end
+    
+    if num and num ~= 0 then
+        cash.Value = num
+    end
+end)
+
+-- Add button
+createButton("ADD", 150, Color3.fromRGB(80, 140, 220), function()
+    if not cash then return end
+    local input = AmountBox.Text:lower()
+    local num
+    
+    if input:find("e") then
+        local base, exp = input:match("([%d%.]+)e(%d+)")
+        if base and exp then
+            num = tonumber(base) * 10^tonumber(exp)
+        end
+    else
+        num = tonumber(input:gsub(",", ""))
+    end
+    
+    if num and num ~= 0 then
+        cash.Value = cash.Value + num
+    end
+end)
+
+-- Loop toggle
+local looping = false
+local loopConnection
+
+createButton("LOOP ON", 204, Color3.fromRGB(220, 100, 60), function()
+    if looping then return end
+    looping = true
+    
+    if loopConnection then loopConnection:Disconnect() end
+    
+    loopConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not cash or not cash.Parent then
+            looping = false
+            loopConnection:Disconnect()
+            return
+        end
+        cash.Value = cash.Value + 999999999999 -- ~1 trillion per frame (~60/s)
+    end)
+end)
+
+createButton("LOOP OFF", 204, Color3.fromRGB(140, 60, 60), function()
+    looping = false
+    if loopConnection then
+        loopConnection:Disconnect()
+        loopConnection = nil
+    end
+end)
+
+-- Made to look somewhat clean / modern
+-- Most of these still get detected very quickly when used in public games
