@@ -1,0 +1,403 @@
+-- ================================================
+-- Roblox Infinite Aimbot + Tracers + Info (Box + Name + HP + Distance)
+-- Tracers now END with:
+--   • Small box
+--   • Player Name (above)
+--   • HP (below)
+--   • Distance in studs (below)
+-- Hotkeys:
+--   Right Shift  →  Show/Hide Menu
+--   E            →  Toggle Aimbot
+--   T            →  Toggle Tracers + Info
+--   Space        →  Infinite Jump (hold to fly)
+-- ================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+-- =============== CONFIG ===============
+local AIMBOT_ENABLED_BY_DEFAULT = false
+local TRACERS_ENABLED_BY_DEFAULT = true
+local INFINITE_JUMP_ENABLED_BY_DEFAULT = true
+
+local AIMBOT_SMOOTHNESS = 0.3
+local TRACER_COLOR = Color3.fromRGB(255, 0, 0)
+local TRACER_THICKNESS = 2
+local TRACER_TRANSPARENCY = 0.8
+
+local INFO_BOX_COLOR = Color3.fromRGB(255, 0, 0)
+local INFO_TEXT_COLOR = Color3.fromRGB(255, 255, 255)
+local INFO_TEXT_SIZE = 15
+local INFO_BOX_SIZE = Vector2.new(20, 30)  -- small clean box
+
+local FOV_RADIUS = 300
+local FOV_COLOR = Color3.fromRGB(255, 255, 255)
+local FOV_THICKNESS = 2
+local FOV_VISIBLE = true
+
+local JUMP_POWER = 50
+local JUMP_HOLD_TO_FLY = true
+-- ======================================
+
+local aimbotEnabled = AIMBOT_ENABLED_BY_DEFAULT
+local tracersEnabled = TRACERS_ENABLED_BY_DEFAULT
+local infiniteJumpEnabled = INFINITE_JUMP_ENABLED_BY_DEFAULT
+local menuVisible = true
+
+-- =============== FOV CIRCLE ===============
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = FOV_THICKNESS
+fovCircle.Color = FOV_COLOR
+fovCircle.Radius = FOV_RADIUS
+fovCircle.Filled = false
+fovCircle.Transparency = 0.8
+fovCircle.Visible = FOV_VISIBLE
+fovCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+-- =============== GUI ===============
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "CheatMenu"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Enabled = true
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 250, 0, 260)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -130)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+Title.Text = "Aimbot + Tracers + Info"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 18
+Title.Parent = MainFrame
+
+local AimbotBtn = Instance.new("TextButton")
+AimbotBtn.Size = UDim2.new(0.9, 0, 0, 35)
+AimbotBtn.Position = UDim2.new(0.05, 0, 0, 40)
+AimbotBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+AimbotBtn.Text = "Aimbot: OFF (E)"
+AimbotBtn.TextColor3 = Color3.new(1,1,1)
+AimbotBtn.Font = Enum.Font.SourceSansBold
+AimbotBtn.TextSize = 16
+AimbotBtn.Parent = MainFrame
+
+local TracerBtn = Instance.new("TextButton")
+TracerBtn.Size = UDim2.new(0.9, 0, 0, 35)
+TracerBtn.Position = UDim2.new(0.05, 0, 0, 85)
+TracerBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+TracerBtn.Text = "Tracers + Info: ON (T)"
+TracerBtn.TextColor3 = Color3.new(1,1,1)
+TracerBtn.Font = Enum.Font.SourceSansBold
+TracerBtn.TextSize = 16
+TracerBtn.Parent = MainFrame
+
+local JumpBtn = Instance.new("TextButton")
+JumpBtn.Size = UDim2.new(0.9, 0, 0, 35)
+JumpBtn.Position = UDim2.new(0.05, 0, 0, 130)
+JumpBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+JumpBtn.Text = "Inf Jump: ON (Space)"
+JumpBtn.TextColor3 = Color3.new(1,1,1)
+JumpBtn.Font = Enum.Font.SourceSansBold
+JumpBtn.TextSize = 16
+JumpBtn.Parent = MainFrame
+
+local FOVLabel = Instance.new("TextLabel")
+FOVLabel.Size = UDim2.new(0.9, 0, 0, 30)
+FOVLabel.Position = UDim2.new(0.05, 0, 0, 175)
+FOVLabel.BackgroundTransparency = 1
+FOVLabel.Text = "FOV Circle Radius: " .. FOV_RADIUS
+FOVLabel.TextColor3 = Color3.new(1,1,1)
+FOVLabel.Font = Enum.Font.SourceSansBold
+FOVLabel.TextSize = 16
+FOVLabel.Parent = MainFrame
+
+local FOVMinus = Instance.new("TextButton")
+FOVMinus.Size = UDim2.new(0.4, 0, 0, 30)
+FOVMinus.Position = UDim2.new(0.05, 0, 0, 210)
+FOVMinus.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+FOVMinus.Text = "- Smaller"
+FOVMinus.TextColor3 = Color3.new(1,1,1)
+FOVMinus.Font = Enum.Font.SourceSansBold
+FOVMinus.TextSize = 16
+FOVMinus.Parent = MainFrame
+
+local FOVPlus = Instance.new("TextButton")
+FOVPlus.Size = UDim2.new(0.4, 0, 0, 30)
+FOVPlus.Position = UDim2.new(0.55, 0, 0, 210)
+FOVPlus.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+FOVPlus.Text = "+ Bigger"
+FOVPlus.TextColor3 = Color3.new(1,1,1)
+FOVPlus.Font = Enum.Font.SourceSansBold
+FOVPlus.TextSize = 16
+FOVPlus.Parent = MainFrame
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0.9, 0, 0, 30)
+CloseBtn.Position = UDim2.new(0.05, 0, 0, 245)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+CloseBtn.Text = "Close Menu"
+CloseBtn.TextColor3 = Color3.new(1,1,1)
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.TextSize = 16
+CloseBtn.Parent = MainFrame
+
+-- Button logic
+AimbotBtn.MouseButton1Click:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    AimbotBtn.Text = "Aimbot: " .. (aimbotEnabled and "ON" or "OFF") .. " (E)"
+    AimbotBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+end)
+
+TracerBtn.MouseButton1Click:Connect(function()
+    tracersEnabled = not tracersEnabled
+    TracerBtn.Text = "Tracers + Info: " .. (tracersEnabled and "ON" or "OFF") .. " (T)"
+    TracerBtn.BackgroundColor3 = tracersEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+end)
+
+JumpBtn.MouseButton1Click:Connect(function()
+    infiniteJumpEnabled = not infiniteJumpEnabled
+    JumpBtn.Text = "Inf Jump: " .. (infiniteJumpEnabled and "ON" or "OFF") .. " (Space)"
+    JumpBtn.BackgroundColor3 = infiniteJumpEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+end)
+
+FOVMinus.MouseButton1Click:Connect(function()
+    FOV_RADIUS = math.max(50, FOV_RADIUS - 25)
+    fovCircle.Radius = FOV_RADIUS
+    FOVLabel.Text = "FOV Circle Radius: " .. FOV_RADIUS
+end)
+
+FOVPlus.MouseButton1Click:Connect(function()
+    FOV_RADIUS = FOV_RADIUS + 25
+    fovCircle.Radius = FOV_RADIUS
+    FOVLabel.Text = "FOV Circle Radius: " .. FOV_RADIUS
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScreenGui.Enabled = false
+end)
+
+-- =============== PLAYER DRAWINGS (Tracer + Box + Name + HP + Distance) ===============
+local PlayerDrawings = {}
+
+local function CreatePlayerInfo(player)
+    if player == LocalPlayer then return end
+    
+    local info = {}
+    
+    -- Tracer line
+    info.line = Drawing.new("Line")
+    info.line.Thickness = TRACER_THICKNESS
+    info.line.Color = TRACER_COLOR
+    info.line.Transparency = TRACER_TRANSPARENCY
+    info.line.Visible = false
+    
+    -- Box at the end of tracer
+    info.box = Drawing.new("Square")
+    info.box.Size = INFO_BOX_SIZE
+    info.box.Thickness = 1.5
+    info.box.Color = INFO_BOX_COLOR
+    info.box.Filled = false
+    info.box.Transparency = 0.9
+    info.box.Visible = false
+    
+    -- Name text (above)
+    info.nameText = Drawing.new("Text")
+    info.nameText.Text = player.DisplayName
+    info.nameText.Size = INFO_TEXT_SIZE
+    info.nameText.Color = INFO_TEXT_COLOR
+    info.nameText.Outline = true
+    info.nameText.Center = true
+    info.nameText.Visible = false
+    
+    -- HP text (below)
+    info.hpText = Drawing.new("Text")
+    info.hpText.Size = INFO_TEXT_SIZE
+    info.hpText.Color = INFO_TEXT_COLOR
+    info.hpText.Outline = true
+    info.hpText.Center = true
+    info.hpText.Visible = false
+    
+    -- Distance text (below HP)
+    info.distText = Drawing.new("Text")
+    info.distText.Size = INFO_TEXT_SIZE
+    info.distText.Color = INFO_TEXT_COLOR
+    info.distText.Outline = true
+    info.distText.Center = true
+    info.distText.Visible = false
+    
+    PlayerDrawings[player] = info
+end
+
+local function RemovePlayerInfo(player)
+    if PlayerDrawings[player] then
+        local info = PlayerDrawings[player]
+        info.line:Remove()
+        info.box:Remove()
+        info.nameText:Remove()
+        info.hpText:Remove()
+        info.distText:Remove()
+        PlayerDrawings[player] = nil
+    end
+end
+
+for _, plr in ipairs(Players:GetPlayers()) do
+    CreatePlayerInfo(plr)
+end
+Players.PlayerAdded:Connect(CreatePlayerInfo)
+Players.PlayerRemoving:Connect(RemovePlayerInfo)
+
+-- =============== AIMBOT HELPERS ===============
+local function IsVisible(targetPart)
+    if not LocalPlayer.Character then return false end
+    local origin = Camera.CFrame.Position
+    local direction = (targetPart.Position - origin)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterDescendantsInstances = {LocalPlayer.Character}
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    local result = workspace:Raycast(origin, direction, rayParams)
+    return not result or result.Instance:IsDescendantOf(targetPart.Parent)
+end
+
+local function GetClosestVisiblePlayer()
+    local closest = nil
+    local shortestDist = math.huge
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local head = player.Character.Head
+            local _, onScreen = Camera:WorldToViewportPoint(head.Position)
+            if onScreen and IsVisible(head) then
+                local dist = (head.Position - Camera.CFrame.Position).Magnitude
+                if dist < shortestDist then
+                    shortestDist = dist
+                    closest = player
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- =============== INFINITE JUMP ===============
+UserInputService.JumpRequest:Connect(function()
+    if infiniteJumpEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if infiniteJumpEnabled and JUMP_HOLD_TO_FLY and UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local hrp = LocalPlayer.Character.HumanoidRootPart
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, JUMP_POWER, hrp.Velocity.Z)
+        end
+    end
+end)
+
+-- =============== MAIN LOOP ===============
+RunService.RenderStepped:Connect(function()
+    fovCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    -- Aimbot
+    if aimbotEnabled then
+        local target = GetClosestVisiblePlayer()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            local targetPos = target.Character.Head.Position
+            local currentCFrame = Camera.CFrame
+            local targetCFrame = CFrame.lookAt(currentCFrame.Position, targetPos)
+            Camera.CFrame = currentCFrame:Lerp(targetCFrame, AIMBOT_SMOOTHNESS)
+        end
+    end
+
+    -- TRACERS + BOX + NAME + HP + DISTANCE
+    local bottomCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y - 5)
+    
+    for player, info in pairs(PlayerDrawings) do
+        if tracersEnabled and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local root = player.Character.HumanoidRootPart
+            local vector, onScreen = Camera:WorldToViewportPoint(root.Position)
+            
+            if onScreen then
+                local screenPos = Vector2.new(vector.X, vector.Y)
+                
+                -- Tracer line
+                info.line.From = bottomCenter
+                info.line.To = screenPos
+                info.line.Visible = true
+                
+                -- Box at the end
+                info.box.Position = screenPos - INFO_BOX_SIZE / 2
+                info.box.Visible = true
+                
+                -- Name (above box)
+                info.nameText.Text = player.DisplayName
+                info.nameText.Position = screenPos - Vector2.new(0, 45)
+                info.nameText.Visible = true
+                
+                -- HP
+                local humanoid = player.Character:FindFirstChild("Humanoid")
+                local hpStr = "HP: 0/0"
+                if humanoid then
+                    hpStr = string.format("HP: %.0f/%.0f", humanoid.Health, humanoid.MaxHealth)
+                end
+                info.hpText.Text = hpStr
+                info.hpText.Position = screenPos + Vector2.new(0, 22)
+                info.hpText.Visible = true
+                
+                -- Distance
+                local dist = 0
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    dist = math.floor((root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+                end
+                info.distText.Text = dist .. " studs"
+                info.distText.Position = screenPos + Vector2.new(0, 40)
+                info.distText.Visible = true
+            else
+                info.line.Visible = false
+                info.box.Visible = false
+                info.nameText.Visible = false
+                info.hpText.Visible = false
+                info.distText.Visible = false
+            end
+        else
+            info.line.Visible = false
+            info.box.Visible = false
+            info.nameText.Visible = false
+            info.hpText.Visible = false
+            info.distText.Visible = false
+        end
+    end
+end)
+
+-- =============== HOTKEYS ===============
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        menuVisible = not menuVisible
+        ScreenGui.Enabled = menuVisible
+    elseif input.KeyCode == Enum.KeyCode.E then
+        aimbotEnabled = not aimbotEnabled
+        AimbotBtn.Text = "Aimbot: " .. (aimbotEnabled and "ON" or "OFF") .. " (E)"
+        AimbotBtn.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+    elseif input.KeyCode == Enum.KeyCode.T then
+        tracersEnabled = not tracersEnabled
+        TracerBtn.Text = "Tracers + Info: " .. (tracersEnabled and "ON" or "OFF") .. " (T)"
+        TracerBtn.BackgroundColor3 = tracersEnabled and Color3.fromRGB(0, 170, 0) or Color3.fromRGB(50, 50, 50)
+    end
+end)
+
+print("✅ Loaded: Infinite Aimbot + Tracers with Box + Name + HP + Distance")
+print("Tracers now end with a small box, name, HP, and distance!")
+print("Hotkeys: Right Shift = Menu | E = Aimbot | T = Tracers+Info | Space = Fly")
